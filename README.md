@@ -13,6 +13,10 @@ Supports a wide and growing range of signature formats
 
 Outputs structured data in JSON format for further analysis or conversion
 
+A user-friendly HTML visualization of all parsed rules
+
+Automatically generates YARA files for each parsed Defender rule (in testing)
+
 Detects string-based, hash-based, registry, filepath, Lua, and other rule types
 
 Provides readable hex dumps and decoded patterns where applicable
@@ -51,6 +55,8 @@ This project is part of an ongoing effort to understand the detection logic used
 
 
 # Disclaimer
+The project is still in the testing phase.
+
 This tool is intended for educational and security analysis purposes only.
 Improper use may violate Microsoft's license agreements. Use responsibly and only on systems you own or are authorized to analyze.
 
