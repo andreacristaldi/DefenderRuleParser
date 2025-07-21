@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 using DefenderRuleParser2.Models;
 
 namespace DefenderRuleParser2.Parsers
@@ -33,17 +34,29 @@ namespace DefenderRuleParser2.Parsers
 
                     for (int i = 0; i < subRuleCount; i++)
                     {
+                        if (ms.Position + 3 > ms.Length)
+                        {
+                            Console.WriteLine($"  ⚠ SubRule header truncated at #{i + 1}");
+                            break;
+                        }
+
                         int weight = br.ReadByte() | (br.ReadByte() << 8);
                         int subRuleSize = br.ReadByte();
-                        byte optionalCode = 0;
 
+                        byte optionalCode = 0;
                         if (ms.Position + 1 < ms.Length)
                             optionalCode = br.ReadByte();
+
+                        if (ms.Position + subRuleSize > ms.Length)
+                        {
+                            Console.WriteLine($"  ⚠ SubRule #{i + 1} truncated, skipping.");
+                            break;
+                        }
 
                         byte[] patternBytes = br.ReadBytes(subRuleSize);
                         string pattern = ParsePattern(patternBytes);
 
-                        Console.WriteLine($"  > SubRule #{i + 1}: Weight={weight}, Pattern={pattern}");
+                        Console.WriteLine($"  > SubRule #{i + 1}: Weight={weight}, Pattern={Truncate(pattern, 80)}");
 
                         if (ThreatDatabase.TryGetThreat(threatId, out var threat))
                         {
@@ -51,7 +64,7 @@ namespace DefenderRuleParser2.Parsers
                             {
                                 Type = "SIGNATURE_TYPE_SWFHSTR_EXT",
                                 Offset = offset,
-                                Pattern = new System.Collections.Generic.List<string> { pattern },
+                                Pattern = new List<string> { pattern },
                                 Parsed = true
                             });
                         }
@@ -61,6 +74,10 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] SWFHSTR_EXT ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
@@ -97,5 +114,12 @@ namespace DefenderRuleParser2.Parsers
 
             return sb.ToString();
         }
+
+        private string Truncate(string input, int maxLength)
+        {
+            return string.IsNullOrEmpty(input) ? input :
+                (input.Length > maxLength ? input.Substring(0, maxLength) + "..." : input);
+        }
     }
 }
+

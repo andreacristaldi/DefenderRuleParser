@@ -14,13 +14,12 @@ namespace DefenderRuleParser2.Parsers
             try
             {
                 byte[] data = reader.ReadBytes(size);
-                string hex = BitConverter.ToString(data).Replace("-", " ");
+                string hex = BitConverter.ToString(data).Replace("-", " ").Trim();
 
                 Console.WriteLine($"[AAGGREGATOREX] Threat ID: {threatId}, Size: {size} bytes");
-                //Console.WriteLine($"  > Hex preview: {Truncate(hex, 80)}");
                 Console.WriteLine($"  > Hex: {hex}");
 
-                if (ThreatDatabase.TryGetThreat(threatId, out var threat))
+                if (!string.IsNullOrEmpty(hex) && ThreatDatabase.TryGetThreat(threatId, out var threat))
                 {
                     threat.Signatures.Add(new SignatureEntry
                     {
@@ -34,14 +33,13 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] AAGGREGATOREX ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
-                reader.BaseStream.Seek(size, SeekOrigin.Current);
             }
-        }
-
-        private string Truncate(string input, int maxLength)
-        {
-            if (string.IsNullOrEmpty(input)) return input;
-            return input.Length > maxLength ? input.Substring(0, maxLength) + "..." : input;
+            finally
+            {
+                
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
+            }
         }
     }
 }
+

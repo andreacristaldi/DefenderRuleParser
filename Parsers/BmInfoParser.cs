@@ -33,7 +33,11 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] BM_INFO ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
-                reader.BaseStream.Seek(size, SeekOrigin.Current);
+            }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }

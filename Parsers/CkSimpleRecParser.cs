@@ -33,7 +33,11 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] CKSIMPLEREC ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
-                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin); // fallback per evitare blocchi
+            }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }

@@ -1,7 +1,6 @@
 ﻿using System;
-using System.IO;
-using System.Text;
 using System.Collections.Generic;
+using System.IO;
 using DefenderRuleParser2.Models;
 
 namespace DefenderRuleParser2.Parsers
@@ -15,12 +14,12 @@ namespace DefenderRuleParser2.Parsers
             try
             {
                 byte[] data = reader.ReadBytes(size);
-                string hex = BitConverter.ToString(data).Replace("-", " ");
+                string hex = BitConverter.ToString(data).Replace("-", " ").Trim();
 
                 Console.WriteLine($"[AAGGREGATOR] Threat ID: {threatId}, Size: {size} bytes");
                 Console.WriteLine($"  > Hex: {hex}");
 
-                if (ThreatDatabase.TryGetThreat(threatId, out var threat))
+                if (!string.IsNullOrEmpty(hex) && ThreatDatabase.TryGetThreat(threatId, out var threat))
                 {
                     threat.Signatures.Add(new SignatureEntry
                     {
@@ -34,8 +33,12 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] AAGGREGATOR ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }
 }
+

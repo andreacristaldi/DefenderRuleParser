@@ -92,15 +92,35 @@ namespace DefenderRuleParser2.Export
 
                     if (sig.Pattern != null && sig.Pattern.Any())
                     {
-                        foreach (var pat in sig.Pattern)
+                        // Ricostruisci offset solo per alcuni tipi noti
+                        var isHexDump = ShouldReformatWithOffset(sig.Type);
+                        if (isHexDump)
                         {
-                            html.AppendLine($"<div class='sig-pattern'>{System.Net.WebUtility.HtmlEncode(pat)}</div>");
+                            long offset = sig.Offset;
+                            int rowSize = 16;
+
+                            var bytes = sig.Pattern
+                                .SelectMany(p => p.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                                .Where(x => x.Length == 2 && Uri.IsHexDigit(x[0]) && Uri.IsHexDigit(x[1]))
+                                .ToList();
+
+                            for (int i = 0; i < bytes.Count; i += rowSize)
+                            {
+                                var chunk = bytes.Skip(i).Take(rowSize).ToList();
+                                string hex = string.Join(" ", chunk);
+                                string addr = (offset + i).ToString("X8");
+                                html.AppendLine($"<div class='sig-pattern'>{addr} {System.Net.WebUtility.HtmlEncode(hex)}</div>");
+                            }
+                        }
+                        else
+                        {
+                            foreach (var pat in sig.Pattern)
+                            {
+                                html.AppendLine($"<div class='sig-pattern'>{System.Net.WebUtility.HtmlEncode(pat)}</div>");
+                            }
                         }
                     }
-                    else
-                    {
-                        html.AppendLine("<div class='sig-pattern'><em>No pattern data available</em></div>");
-                    }
+
 
                     html.AppendLine("</div>");
                 }
@@ -114,5 +134,25 @@ namespace DefenderRuleParser2.Export
 
             File.WriteAllText(outputPath, html.ToString(), Encoding.UTF8);
         }
+
+        private static bool ShouldReformatWithOffset(string type)
+        {
+            // Signature types per cui ha senso reinserire offset esadecimali
+            var typesWithHexDump = new HashSet<string>
+                    {
+                        "SIGNATURE_TYPE_STATIC",
+                        "SIGNATURE_TYPE_PEPCODE",
+                        "SIGNATURE_TYPE_PESTATIC",
+                        "SIGNATURE_TYPE_PESTATICEX",
+                        "SIGNATURE_TYPE_THREAD_X86",
+                        "SIGNATURE_TYPE_KCRCE",
+                        "SIGNATURE_TYPE_KCRCEX",
+                        "SIGNATURE_TYPE_KPATEX",
+                        "SIGNATURE_TYPE_NID"
+                    };
+
+            return typesWithHexDump.Contains(type);
+        }
+
     }
 }

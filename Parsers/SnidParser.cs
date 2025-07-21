@@ -8,7 +8,7 @@ namespace DefenderRuleParser2.Parsers
     {
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
-            long baseOffset = reader.BaseStream.Position;
+            long offset = reader.BaseStream.Position;
 
             try
             {
@@ -24,7 +24,7 @@ namespace DefenderRuleParser2.Parsers
                     threat.Signatures.Add(new SignatureEntry
                     {
                         Type = "SIGNATURE_TYPE_SNID",
-                        Offset = baseOffset,
+                        Offset = offset,
                         Pattern = new System.Collections.Generic.List<string> { hexDump },
                         Parsed = true
                     });
@@ -32,8 +32,12 @@ namespace DefenderRuleParser2.Parsers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] SNID ❌ Error parsing at offset 0x{baseOffset:X}: {ex.Message}");
-                reader.BaseStream.Seek(baseOffset + size, SeekOrigin.Begin);
+                Console.WriteLine($"[!] SNID ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }

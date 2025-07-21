@@ -12,7 +12,7 @@ namespace DefenderRuleParser2.Parsers
 
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
-            long baseOffset = reader.BaseStream.Position;
+            long offset = reader.BaseStream.Position;
             byte[] buffer = reader.ReadBytes(size);
 
             try
@@ -48,7 +48,7 @@ namespace DefenderRuleParser2.Parsers
 
                         int weight = br.ReadByte() | (br.ReadByte() << 8);
                         int subRuleSize = br.ReadByte();
-                        byte code = br.ReadByte(); // marker / metadata
+                        byte code = br.ReadByte(); // metadata
 
                         if (ms.Position + subRuleSize > ms.Length)
                         {
@@ -66,8 +66,9 @@ namespace DefenderRuleParser2.Parsers
                             threat.Signatures.Add(new SignatureEntry
                             {
                                 Type = "SIGNATURE_TYPE_MACHOHSTR_EXT",
-                                Offset = baseOffset,
-                                Pattern = new List<string> { pattern }
+                                Offset = offset,
+                                Pattern = new List<string> { pattern },
+                                Parsed = true
                             });
                         }
                     }
@@ -75,12 +76,11 @@ namespace DefenderRuleParser2.Parsers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] MACHOHSTR_EXT ❌ Error parsing at offset 0x{baseOffset:X}: {ex.Message}");
+                Console.WriteLine($"[!] MACHOHSTR_EXT ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
             }
             finally
             {
-                // Always skip to the next signature block
-                reader.BaseStream.Seek(baseOffset + size, SeekOrigin.Begin);
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
 

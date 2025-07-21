@@ -34,6 +34,10 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[FOP] ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }

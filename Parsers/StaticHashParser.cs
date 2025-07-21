@@ -33,10 +33,15 @@ namespace DefenderRuleParser2.Parsers
                     });
                 }
             }
+            
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] STATIC ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
-                reader.BaseStream.Seek(size, SeekOrigin.Current); // Skip safely
+            }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
 

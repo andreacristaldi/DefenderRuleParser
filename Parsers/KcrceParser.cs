@@ -10,7 +10,7 @@ namespace DefenderRuleParser2.Parsers
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
             long offset = reader.BaseStream.Position;
-            var hex = new List<string>();
+            var dump = new List<string>();
 
             try
             {
@@ -26,11 +26,11 @@ namespace DefenderRuleParser2.Parsers
                         else
                             line += "   ";
                     }
-                    hex.Add(line.TrimEnd());
+                    dump.Add(line.TrimEnd());
                 }
 
                 Console.WriteLine($"[KCRCE] Threat ID: {threatId}, Size {size} bytes");
-                Console.WriteLine("  > Hex:\n" + string.Join(Environment.NewLine, hex));
+                Console.WriteLine("  > Hex:\n" + string.Join(Environment.NewLine, dump));
 
                 if (ThreatDatabase.TryGetThreat(threatId, out var threat))
                 {
@@ -38,16 +38,22 @@ namespace DefenderRuleParser2.Parsers
                     {
                         Type = "SIGNATURE_TYPE_KCRCE",
                         Offset = offset,
-                        Pattern = hex
+                        Pattern = dump,
+                        Parsed = false
                     });
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] KCRCE ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }
 }
+
 

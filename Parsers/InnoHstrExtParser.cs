@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 using DefenderRuleParser2.Models;
 
 namespace DefenderRuleParser2.Parsers
@@ -16,51 +17,66 @@ namespace DefenderRuleParser2.Parsers
             try
             {
                 byte[] buffer = reader.ReadBytes(size);
-                using (MemoryStream ms = new MemoryStream(buffer))
-                using (BinaryReader br = new BinaryReader(ms))
+                var ms = new MemoryStream(buffer);
+                var br = new BinaryReader(ms);
+
+                ushort unknown = br.ReadUInt16();
+                int threshold = br.ReadByte() | (br.ReadByte() << 8);
+                int subRuleCount = br.ReadByte() | (br.ReadByte() << 8);
+
+                if (subRuleCount <= 0 || subRuleCount > MaxSubRules)
                 {
-                    ushort unknown = br.ReadUInt16();
-                    int threshold = br.ReadByte() | (br.ReadByte() << 8);
-                    int subRuleCount = br.ReadByte() | (br.ReadByte() << 8);
+                    Console.WriteLine($"[!] INNOHSTR_EXT ⚠ Invalid subrule count: {subRuleCount}");
+                    return;
+                }
 
-                    if (subRuleCount > MaxSubRules)
+                Console.WriteLine($"[INNOHSTR_EXT] Threat ID: {threatId}, Threshold: {threshold}, SubRules: {subRuleCount}");
+
+                var patterns = new List<string>();
+
+                for (int i = 0; i < subRuleCount; i++)
+                {
+                    if (ms.Position + 4 > ms.Length)
                     {
-                        Console.WriteLine($"[!] Unusual INNOHSTR_EXT subrule count: {subRuleCount}");
-                        return;
+                        Console.WriteLine($"[INNOHSTR_EXT] ⚠ SubRule #{i + 1} header incomplete.");
+                        break;
                     }
 
-                    Console.WriteLine($"[INNOHSTR_EXT] Threat ID: {threatId}, Threshold: {threshold}, SubRules: {subRuleCount}");
+                    int weight = br.ReadByte() | (br.ReadByte() << 8);
+                    int subRuleSize = br.ReadByte();
+                    byte optionalCode = br.ReadByte(); // optional
 
-                    for (int i = 0; i < subRuleCount; i++)
+                    if (ms.Position + subRuleSize > ms.Length)
                     {
-                        int weight = br.ReadByte() | (br.ReadByte() << 8);
-                        int subRuleSize = br.ReadByte();
-                        byte optionalCode = 0;
-
-                        if (ms.Position + 1 < ms.Length)
-                            optionalCode = br.ReadByte();
-
-                        byte[] patternBytes = br.ReadBytes(subRuleSize);
-                        string pattern = ParsePattern(patternBytes);
-
-                        Console.WriteLine($"  > SubRule #{i + 1}: Weight={weight}, Pattern={pattern}");
-
-                        if (ThreatDatabase.TryGetThreat(threatId, out var threat))
-                        {
-                            threat.Signatures.Add(new SignatureEntry
-                            {
-                                Type = "SIGNATURE_TYPE_INNOHSTR_EXT",
-                                Offset = offset,
-                                Pattern = new System.Collections.Generic.List<string> { pattern },
-                                Parsed = true
-                            });
-                        }
+                        Console.WriteLine($"[INNOHSTR_EXT] ⚠ SubRule #{i + 1} truncated. Skipping.");
+                        break;
                     }
+
+                    byte[] patternBytes = br.ReadBytes(subRuleSize);
+                    string pattern = ParsePattern(patternBytes);
+
+                    Console.WriteLine($"  > SubRule #{i + 1}: Weight={weight}, Pattern={pattern}");
+                    patterns.Add(pattern);
+                }
+
+                if (patterns.Count > 0 && ThreatDatabase.TryGetThreat(threatId, out var threat))
+                {
+                    threat.Signatures.Add(new SignatureEntry
+                    {
+                        Type = "SIGNATURE_TYPE_INNOHSTR_EXT",
+                        Offset = offset,
+                        Pattern = patterns,
+                        Parsed = true
+                    });
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] INNOHSTR_EXT ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
@@ -72,12 +88,10 @@ namespace DefenderRuleParser2.Parsers
             for (int i = 0; i < bytes.Length; i++)
             {
                 byte b = bytes[i];
-
                 if (b == 0x90 && i + 2 < bytes.Length)
                 {
                     byte type = bytes[i + 1];
                     byte val = bytes[i + 2];
-
                     switch (type)
                     {
                         case 0x01: sb.Append($"[+{val} bytes]"); i += 2; continue;

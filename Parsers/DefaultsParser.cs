@@ -16,12 +16,12 @@ namespace DefenderRuleParser2.Parsers
             {
                 byte[] raw = reader.ReadBytes(size);
                 string hexDump = BitConverter.ToString(raw).Replace("-", " ");
-                string ascii = Encoding.UTF8.GetString(raw).Trim('\0');
+
+                // Interpretazione sicura della parte ASCII
+                string ascii = ToPrintableAscii(raw).Trim();
 
                 Console.WriteLine($"[DEFAULTS] Threat ID: {threatId}, Size: {size} bytes");
-                //Console.WriteLine($"  > ASCII: {Truncate(ascii, 80)}");
                 Console.WriteLine($"  > ASCII: {ascii}");
-                //Console.WriteLine($"  > HEX:   {Truncate(hexDump, 80)}");
                 Console.WriteLine($"  > HEX:   {hexDump}");
 
                 if (ThreatDatabase.TryGetThreat(threatId, out var threat))
@@ -38,14 +38,23 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] DEFAULTS ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
 
-        private string Truncate(string input, int max)
+        private string ToPrintableAscii(byte[] data)
         {
-            if (string.IsNullOrEmpty(input)) return input;
-            return input.Length > max ? input.Substring(0, max) + "..." : input;
+            var sb = new StringBuilder();
+            foreach (byte b in data)
+            {
+                sb.Append(b >= 32 && b <= 126 ? (char)b : '.');
+            }
+            return sb.ToString();
         }
     }
 }
+

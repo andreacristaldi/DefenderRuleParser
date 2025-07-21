@@ -38,13 +38,18 @@ namespace DefenderRuleParser2.Parsers
                     {
                         Type = "SIGNATURE_TYPE_KPATEX",
                         Offset = offset,
-                        Pattern = dump
+                        Pattern = dump,
+                        Parsed = false
                     });
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] KPATEX ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }

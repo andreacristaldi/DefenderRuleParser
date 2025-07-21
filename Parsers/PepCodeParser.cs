@@ -10,7 +10,8 @@ namespace DefenderRuleParser2.Parsers
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
             long offset = reader.BaseStream.Position;
-            var lines = new List<string>();
+            var hexLinesForConsole = new List<string>();
+            var hexLinesForExport = new List<string>();
 
             try
             {
@@ -18,19 +19,31 @@ namespace DefenderRuleParser2.Parsers
 
                 for (int i = 0; i < buffer.Length; i += 16)
                 {
-                    string hexLine = $"{(offset + i):X8} ";
+                    string line = $"{(offset + i):X8} ";
+                    string clean = "";
+
                     for (int j = 0; j < 16; j++)
                     {
                         if (i + j < buffer.Length)
-                            hexLine += $"{buffer[i + j]:X2} ";
+                        {
+                            byte b = buffer[i + j];
+                            line += $"{b:X2} ";
+                            clean += $"{b:X2} ";
+                        }
                         else
-                            hexLine += "   ";
+                        {
+                            line += "   ";
+                        }
                     }
-                    lines.Add(hexLine.TrimEnd());
+
+                    hexLinesForConsole.Add(line.TrimEnd());
+                    hexLinesForExport.Add(clean.TrimEnd());
                 }
 
                 Console.WriteLine($"[PEPCODE] Threat ID: {threatId}, Size: {size} bytes");
-                Console.WriteLine("  > Lines: " + lines);
+                Console.WriteLine("  > Hex dump:");
+                foreach (var line in hexLinesForConsole)
+                    Console.WriteLine("    " + line);
 
                 if (ThreatDatabase.TryGetThreat(threatId, out var threat))
                 {
@@ -38,15 +51,20 @@ namespace DefenderRuleParser2.Parsers
                     {
                         Type = "SIGNATURE_TYPE_PEPCODE",
                         Offset = offset,
-                        Pattern = lines
+                        Pattern = hexLinesForExport
                     });
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] PEPCODE ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }
 }
+

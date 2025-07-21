@@ -11,7 +11,7 @@ namespace DefenderRuleParser2.Parsers
 
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
-            long baseOffset = reader.BaseStream.Position;
+            long offset = reader.BaseStream.Position;
             try
             {
                 byte[] buffer = reader.ReadBytes(size);
@@ -20,7 +20,7 @@ namespace DefenderRuleParser2.Parsers
                 {
                     if (size < 6)
                     {
-                        Console.WriteLine($"[HSTR] ⚠ Skipping too small HSTR block at offset 0x{baseOffset:X}");
+                        Console.WriteLine($"[HSTR] ⚠ Skipping too small HSTR block at offset 0x{offset:X}");
                         return;
                     }
 
@@ -30,7 +30,7 @@ namespace DefenderRuleParser2.Parsers
 
                     if (subRuleCount <= 0 || subRuleCount > MaxSubRules)
                     {
-                        Console.WriteLine($"[HSTR] ⚠ Invalid subrule count {subRuleCount} for Threat ID {threatId} at 0x{baseOffset:X}");
+                        Console.WriteLine($"[HSTR] ⚠ Invalid subrule count {subRuleCount} for Threat ID {threatId} at 0x{offset:X}");
                         return;
                     }
 
@@ -67,7 +67,7 @@ namespace DefenderRuleParser2.Parsers
                             threat.Signatures.Add(new SignatureEntry
                             {
                                 Type = "SIGNATURE_TYPE_PEHSTR",
-                                Offset = baseOffset,
+                                Offset = offset,
                                 Pattern = new System.Collections.Generic.List<string> { pattern }
                             });
                         }
@@ -76,8 +76,12 @@ namespace DefenderRuleParser2.Parsers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] HSTR ❌ Error parsing at offset 0x{baseOffset:X}: {ex.Message}");
-                reader.BaseStream.Seek(baseOffset + size, SeekOrigin.Begin);
+                Console.WriteLine($"[!] HSTR ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
 

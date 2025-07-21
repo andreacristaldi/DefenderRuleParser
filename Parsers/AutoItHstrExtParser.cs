@@ -63,7 +63,8 @@ namespace DefenderRuleParser2.Parsers
                         {
                             Type = "SIGNATURE_TYPE_AUTOITHSTR_EXT",
                             Offset = offset,
-                            Pattern = patterns
+                            Pattern = patterns,
+                            Parsed = true
                         });
                     }
                 }
@@ -71,8 +72,13 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] AUTOITHSTR_EXT ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
-                reader.BaseStream.Seek(size, SeekOrigin.Current);
             }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
+            }
+
         }
 
         private string ParsePattern(byte[] bytes)

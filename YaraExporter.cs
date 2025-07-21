@@ -1,53 +1,53 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using DefenderRuleParser2;
+using System.Collections.Generic;
 using DefenderRuleParser2.Models;
 
 namespace DefenderRuleParser2.Export
 {
     public class YaraExporter
     {
-        public static void ExportThreatsAsYara(List<Threat> threats, string outputFolder)
+        public static void ExportThreatsAsYara(List<Threat> threats, string outputPath)
         {
+            var sb = new StringBuilder();
+
             foreach (var threat in threats)
             {
-                var yara = new StringBuilder();
-
                 string ruleName = SanitizeRuleName(threat.ThreatName);
-                yara.AppendLine($"rule {ruleName}");
-                yara.AppendLine("{");
-                yara.AppendLine("    meta:");
-                yara.AppendLine($"        threat_name = \"{threat.ThreatName}\"");
-                yara.AppendLine($"        offset_start = \"0x{threat.BeginPosition:X}\"");
-                yara.AppendLine($"        offset_end = \"0x{threat.EndPosition:X}\"");
 
-                var stringCounter = 0;
-                yara.AppendLine("    strings:");
+                sb.AppendLine($"rule {ruleName}");
+                sb.AppendLine("{");
+                sb.AppendLine("    meta:");
+                sb.AppendLine($"        threat_name = \"{threat.ThreatName}\"");
+                sb.AppendLine($"        offset_start = \"0x{threat.BeginPosition:X}\"");
+                sb.AppendLine($"        offset_end = \"0x{threat.EndPosition:X}\"");
+                sb.AppendLine($"        project = \"DefenderRuleParser on GitHub\"");
+                sb.AppendLine($"        author = \"Andrea Cristaldi\"");
 
+                int stringId = 0;
                 var conditions = new List<string>();
+
+                sb.AppendLine("    strings:");
 
                 foreach (var sig in threat.Signatures.Where(s => s.Pattern != null && s.Pattern.Any()))
                 {
-                    foreach (var pattern in sig.Pattern)
-                    {
-                        string varName = $"$a{stringCounter}";
-                        string hex = ConvertToHexIfNeeded(pattern);
-                        yara.AppendLine($"        {varName} = {{ {hex} }} // {sig.Type}");
-                        conditions.Add(varName);
-                        stringCounter++;
-                    }
+                    var normalizedHex = NormalizePattern(sig.Pattern);
+                    if (string.IsNullOrEmpty(normalizedHex)) continue;
+
+                    string varName = $"$a{stringId++}";
+                    sb.AppendLine($"        {varName} = {{ {normalizedHex} }} // {sig.Type}");
+                    conditions.Add(varName);
                 }
 
-                yara.AppendLine("    condition:");
-                yara.AppendLine("        " + (conditions.Count > 0 ? string.Join(" or ", conditions) : "false"));
-                yara.AppendLine("}");
-
-                
-                File.WriteAllText(outputFolder, yara.ToString(), Encoding.UTF8);
+                sb.AppendLine("    condition:");
+                sb.AppendLine("        " + (conditions.Count > 0 ? string.Join(" or ", conditions) : "false"));
+                sb.AppendLine("}");
+                sb.AppendLine();
             }
+
+            File.WriteAllText(outputPath, sb.ToString(), Encoding.UTF8);
         }
 
         private static string SanitizeRuleName(string name)
@@ -59,12 +59,42 @@ namespace DefenderRuleParser2.Export
                 .Replace("/", "_");
         }
 
-        private static string ConvertToHexIfNeeded(string input)
+        private static string NormalizePattern(List<string> lines)
         {
-            if (input.All(c => Uri.IsHexDigit(c) || c == ' ')) return input;
+            var hexBytes = new List<string>();
 
-            var bytes = Encoding.ASCII.GetBytes(input);
-            return string.Join(" ", bytes.Select(b => b.ToString("X2")));
+            foreach (var line in lines)
+            {
+                // Se esiste un indirizzo a sinistra (8 cifre hex), rimuovilo
+                string clean = line.Trim();
+                if (clean.Length >= 9 && IsHexAddress(clean.Substring(0, 8)))
+                    clean = clean.Substring(9);
+
+                var parts = clean.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.All(p => p.Length == 2 && IsHex(p)))
+                {
+                    hexBytes.AddRange(parts);
+                }
+                else
+                {
+                    // pattern non valido per YARA come hex, ignoriamo
+                    return null;
+                }
+            }
+
+            return string.Join(" ", hexBytes);
+        }
+
+        private static bool IsHex(string s)
+        {
+            return s.All(c => Uri.IsHexDigit(c));
+        }
+
+        private static bool IsHexAddress(string s)
+        {
+            return s.Length == 8 && s.All(c => Uri.IsHexDigit(c));
         }
     }
 }
+

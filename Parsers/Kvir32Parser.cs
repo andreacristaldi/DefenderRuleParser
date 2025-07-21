@@ -13,28 +13,25 @@ namespace DefenderRuleParser2.Parsers
 
             try
             {
+
                 byte[] data = reader.ReadBytes(size);
-                List<string> entries = new List<string>();
-                int ptr = 0;
+                List<string> formatted = new List<string>();
 
-                while (ptr + 16 <= data.Length)
+                for (int i = 0; i < data.Length; i += 16)
                 {
-                    byte[] part1 = new byte[4];
-                    byte[] part2 = new byte[4];
-                    byte[] part3 = new byte[4];
-
-                    Array.Copy(data, ptr, part1, 0, 4);
-                    Array.Copy(data, ptr + 4, part2, 0, 4);
-                    Array.Copy(data, ptr + 8, part3, 0, 4);
-
-                    string id = $"{BitConverter.ToString(part1)} {BitConverter.ToString(part2)} {BitConverter.ToString(part3)}".Replace("-", "");
-
-                    entries.Add(id);
-                    ptr += 16;
+                    string line = $"{(offset + i):X8} ";
+                    for (int j = 0; j < 16; j++)
+                    {
+                        if (i + j < data.Length)
+                            line += $"{data[i + j]:X2} ";
+                        else
+                            line += "   ";
+                    }
+                    formatted.Add(line.TrimEnd());
                 }
 
-                Console.WriteLine($"[KVIR32] Threat ID: {threatId}, Entries: {entries.Count}");
-                Console.WriteLine("  > Entries:\n" + string.Join(Environment.NewLine, entries));
+                Console.WriteLine($"[KVIR32] Threat ID: {threatId}, Size: {size} bytes");
+                Console.WriteLine("  > Dump:\n" + string.Join(Environment.NewLine, formatted));
 
                 if (ThreatDatabase.TryGetThreat(threatId, out var threat))
                 {
@@ -42,13 +39,18 @@ namespace DefenderRuleParser2.Parsers
                     {
                         Type = "SIGNATURE_TYPE_KVIR32",
                         Offset = offset,
-                        Pattern = entries
+                        Pattern = formatted,
+                        Parsed = false
                     });
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] KVIR32 ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }

@@ -10,7 +10,8 @@ namespace DefenderRuleParser2.Parsers
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
             long offset = reader.BaseStream.Position;
-            var hexLines = new List<string>();
+            var hexLinesConsole = new List<string>();
+            var hexLinesExport = new List<string>();
 
             try
             {
@@ -18,32 +19,47 @@ namespace DefenderRuleParser2.Parsers
 
                 for (int i = 0; i < data.Length; i += 16)
                 {
-                    string line = $"{(offset + i):X8} ";
+                    string consoleLine = $"{(offset + i):X8} ";
+                    string exportLine = "";
+
                     for (int j = 0; j < 16; j++)
                     {
                         if (i + j < data.Length)
-                            line += $"{data[i + j]:X2} ";
+                        {
+                            byte b = data[i + j];
+                            consoleLine += $"{b:X2} ";
+                            exportLine += $"{b:X2} ";
+                        }
                         else
-                            line += "   ";
+                        {
+                            consoleLine += "   ";
+                        }
                     }
-                    hexLines.Add(line.TrimEnd());
+
+                    hexLinesConsole.Add(consoleLine.TrimEnd());
+                    hexLinesExport.Add(exportLine.TrimEnd());
                 }
 
                 Console.WriteLine($"[PESTATICEX] Threat ID: {threatId}, Size {size} bytes");
-                Console.WriteLine("  > Hex:\n" + string.Join(Environment.NewLine, hexLines));
+                Console.WriteLine("  > Hex:\n" + string.Join(Environment.NewLine, hexLinesConsole));
+
                 if (ThreatDatabase.TryGetThreat(threatId, out var threat))
                 {
                     threat.Signatures.Add(new SignatureEntry
                     {
                         Type = "SIGNATURE_TYPE_PESTATICEX",
                         Offset = offset,
-                        Pattern = hexLines
+                        Pattern = hexLinesExport
                     });
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] PESTATICEX ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }

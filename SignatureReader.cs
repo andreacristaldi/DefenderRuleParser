@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 
 namespace DefenderRuleParser2
@@ -33,7 +30,6 @@ namespace DefenderRuleParser2
                     if (sigType == "SIGNATURE_TYPE_THREAT_BEGIN")
                     {
                         currentThreatId = reader.ReadUInt32();
-
                         Threat threat = ThreatDatabase.CreateOrUpdateThreat(currentThreatId, position);
                         Console.WriteLine($"[+] Threat Begin: ID={currentThreatId} Name='{threat.ThreatName}'");
                     }
@@ -52,7 +48,13 @@ namespace DefenderRuleParser2
                         SignatureDispatcher.Dispatch(sigType, reader, size, currentThreatId);
                     }
 
-                    reader.BaseStream.Position = endPosition;
+                    // Allineamento sicuro al prossimo blocco, evitando di saltare dati in caso di parsing parziale
+                    if (reader.BaseStream.Position < endPosition)
+                    {
+                        long remaining = endPosition - reader.BaseStream.Position;
+                        Console.WriteLine($"[~] Skipping {remaining} byte(s) to align with next signature...");
+                        reader.BaseStream.Seek(remaining, SeekOrigin.Current);
+                    }
                 }
                 catch (EndOfStreamException)
                 {

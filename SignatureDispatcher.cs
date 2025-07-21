@@ -126,19 +126,27 @@ namespace DefenderRuleParser2
                 reader.BaseStream.Seek(size, SeekOrigin.Current); // Skip unknown signature block
             }
 
+            //if (ThreatDatabase.TryGetThreat(threatId, out var threat))
+            //{
+            //    if (!threat.SignatureStats.ContainsKey(sigType))
+            //        threat.SignatureStats[sigType] = 0;
+
+            //    threat.SignatureStats[sigType]++;
+
+            //    threat.Signatures.Add(new SignatureEntry
+            //    {
+            //        Type = sigType,
+            //        Offset = offset
+            //        // Pattern 
+            //    });
+            //}
+
             if (ThreatDatabase.TryGetThreat(threatId, out var threat))
             {
                 if (!threat.SignatureStats.ContainsKey(sigType))
                     threat.SignatureStats[sigType] = 0;
 
                 threat.SignatureStats[sigType]++;
-
-                threat.Signatures.Add(new SignatureEntry
-                {
-                    Type = sigType,
-                    Offset = offset
-                    // Pattern 
-                });
             }
 
 

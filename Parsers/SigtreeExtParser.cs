@@ -20,10 +20,10 @@ namespace DefenderRuleParser2.Parsers
                 {
                     Console.WriteLine($"[SIGTREE_EXT] Threat ID: {threatId}, Size: {size} bytes");
 
-                    
                     ushort nodeCount = br.ReadUInt16();
-
                     Console.WriteLine($"  > Node count: {nodeCount}");
+
+                    var patterns = new List<string>();
 
                     for (int i = 0; i < nodeCount; i++)
                     {
@@ -46,18 +46,36 @@ namespace DefenderRuleParser2.Parsers
                         }
 
                         byte[] nodeData = br.ReadBytes(nodeSize);
-                        string hex = BitConverter.ToString(nodeData).Replace("-", " ");
 
-                        if (ThreatDatabase.TryGetThreat(threatId, out var threat))
+                        // Console output with addresses
+                        Console.WriteLine($"      - Hex:");
+                        for (int j = 0; j < nodeData.Length; j += 16)
                         {
-                            threat.Signatures.Add(new SignatureEntry
+                            string line = $"        {(offset + j):X8} ";
+                            for (int k = 0; k < 16; k++)
                             {
-                                Type = "SIGNATURE_TYPE_SIGTREE_EXT",
-                                Offset = offset,
-                                Pattern = new List<string> { hex },
-                                Parsed = false
-                            });
+                                if (j + k < nodeData.Length)
+                                    line += $"{nodeData[j + k]:X2} ";
+                                else
+                                    line += "   ";
+                            }
+                            Console.WriteLine(line.TrimEnd());
                         }
+
+                        // Export without addresses
+                        string hex = BitConverter.ToString(nodeData).Replace("-", " ");
+                        patterns.Add(hex);
+                    }
+
+                    if (patterns.Count > 0 && ThreatDatabase.TryGetThreat(threatId, out var threat))
+                    {
+                        threat.Signatures.Add(new SignatureEntry
+                        {
+                            Type = "SIGNATURE_TYPE_SIGTREE_EXT",
+                            Offset = offset,
+                            Pattern = patterns,
+                            Parsed = false
+                        });
                     }
                 }
             }

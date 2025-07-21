@@ -9,7 +9,7 @@ namespace DefenderRuleParser2.Parsers
     {
         public void Parse(BinaryReader reader, int size, uint threatId)
         {
-            long baseOffset = reader.BaseStream.Position;
+            long offset = reader.BaseStream.Position;
             var hexDump = new List<string>();
 
             try
@@ -18,7 +18,7 @@ namespace DefenderRuleParser2.Parsers
 
                 for (int i = 0; i < data.Length; i += 16)
                 {
-                    var line = $"{(baseOffset + i):X8} ";
+                    var line = $"{(offset + i):X8} ";
                     for (int j = 0; j < 16; j++)
                     {
                         if (i + j < data.Length)
@@ -38,15 +38,19 @@ namespace DefenderRuleParser2.Parsers
                     threat.Signatures.Add(new SignatureEntry
                     {
                         Type = "SIGNATURE_TYPE_SIGTREE",
-                        Offset = baseOffset,
+                        Offset = offset,
                         Pattern = hexDump
                     });
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] SIGTREE ❌ Error parsing at offset 0x{baseOffset:X}: {ex.Message}");
-                reader.BaseStream.Seek(baseOffset + size, SeekOrigin.Begin);
+                Console.WriteLine($"[!] SIGTREE ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
+                reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
     }

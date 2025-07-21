@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 using DefenderRuleParser2.Models;
 
 namespace DefenderRuleParser2.Parsers
@@ -25,12 +26,23 @@ namespace DefenderRuleParser2.Parsers
 
                     for (int i = 0; i < subRuleCount; i++)
                     {
+                        long subStart = br.BaseStream.Position;
+
+                        if (subStart + 4 > ms.Length)
+                        {
+                            Console.WriteLine($"[CMDHSTR_EXT] ⚠ Incomplete header for SubRule #{i + 1}. Skipping.");
+                            break;
+                        }
+
                         int weight = br.ReadByte() | (br.ReadByte() << 8);
                         int subRuleSize = br.ReadByte();
+                        byte optionalCode = br.ReadByte(); // may be used for EXT logic
 
-                        byte optionalCode = 0;
-                        if (ms.Position + 1 < ms.Length)
-                            optionalCode = br.ReadByte();
+                        if (br.BaseStream.Position + subRuleSize > ms.Length)
+                        {
+                            Console.WriteLine($"[CMDHSTR_EXT] ⚠ SubRule #{i + 1} truncated. Skipping.");
+                            break;
+                        }
 
                         byte[] patternBytes = br.ReadBytes(subRuleSize);
                         string pattern = ParsePattern(patternBytes);
@@ -42,8 +54,8 @@ namespace DefenderRuleParser2.Parsers
                             threat.Signatures.Add(new SignatureEntry
                             {
                                 Type = "SIGNATURE_TYPE_CMDHSTR_EXT",
-                                Offset = offset,
-                                Pattern = new System.Collections.Generic.List<string> { pattern },
+                                Offset = offset + subStart,
+                                Pattern = new List<string> { pattern },
                                 Parsed = true
                             });
                         }
@@ -53,6 +65,10 @@ namespace DefenderRuleParser2.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine($"[!] CMDHSTR_EXT ❌ Error parsing at offset 0x{offset:X}: {ex.Message}");
+            }
+            finally
+            {
+
                 reader.BaseStream.Seek(offset + size, SeekOrigin.Begin);
             }
         }
@@ -70,29 +86,21 @@ namespace DefenderRuleParser2.Parsers
                     byte type = bytes[i + 1];
                     byte val = bytes[i + 2];
 
-                    switch (type)
+                    if (type == 0x01)
                     {
-                        case 0x01:
-                            sb.Append($"[+{val} bytes]");
-                            i += 2;
-                            continue;
-                        case 0x02:
-                            sb.Append($"[≤{val} bytes]");
-                            i += 2;
-                            continue;
-                        default:
-                            sb.Append('.');
-                            break;
+                        sb.Append($"[+{val} bytes]");
+                        i += 2;
+                        continue;
+                    }
+                    else if (type == 0x02)
+                    {
+                        sb.Append($"[≤{val} bytes]");
+                        i += 2;
+                        continue;
                     }
                 }
-                else if (b >= 32 && b <= 126)
-                {
-                    sb.Append((char)b);
-                }
-                else
-                {
-                    sb.Append('.');
-                }
+
+                sb.Append((b >= 32 && b <= 126) ? (char)b : '.');
             }
 
             return sb.ToString();
