@@ -35,6 +35,8 @@ PowerShell access (for retrieving threat catalog via Get-MpThreatCatalog)
 DefenderRuleParser <file.bin>
 DefenderRuleParser <folderPath> [--recursive] [--skip-existing]
 
+Use RunMe3.bat to automate the parsing of all of .bin files
+
 # Arguments
 file.bin: A single Defender binary signature file
 
